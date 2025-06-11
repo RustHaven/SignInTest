@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>🔥 Firebase Auth — Email/Password + Google Sign-In</title>
+<style>
+  /* Reset and base */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: #333;
+  }
+
+  #auth-container {
+    background: #fff;
+    padding: 40px 35px 50px;
+    border-radius: 12px;
+    width: 350px;
+    max-width: 90vw;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    text-align: center;
+    transition: all 0.3s ease;
+  }
+
+  #auth-container h2 {
+    margin-bottom: 30px;
+    font-weight: 700;
+    color: #222;
+  }
+
+  input {
+    width: 100%;
+    padding: 14px 15px;
+    margin: 10px 0 18px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+  }
+  input:focus {
+    outline: none;
+    border-color: #4285F4;
+    box-shadow: 0 0 8px #4285F4aa;
+  }
+
+  button {
+    width: 100%;
+    padding: 14px 0;
+    margin-top: 10px;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 8px;
+    border: none;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  button:active {
+    transform: scale(0.98);
+  }
+  #auth-btn {
+    background-color: #4285F4;
+    color: white;
+    box-shadow: 0 6px 12px rgba(66, 133, 244, 0.4);
+  }
+  #auth-btn:hover {
+    background-color: #357ae8;
+    box-shadow: 0 8px 20px rgba(53, 122, 232, 0.6);
+  }
+  #google-btn {
+    background-color: #DB4437;
+    color: white;
+    box-shadow: 0 6px 12px rgba(219, 68, 55, 0.4);
+  }
+  #google-btn:hover {
+    background-color: #c23321;
+    box-shadow: 0 8px 20px rgba(194, 51, 33, 0.6);
+  }
+  #reset-password-btn {
+    background-color: #555;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    box-shadow: none;
+    margin-top: 18px;
+  }
+  #reset-password-btn:hover {
+    background-color: #444;
+  }
+
+  #toggle-signup {
+    margin-top: 25px;
+    font-size: 14px;
+    color: #4285F4;
+    cursor: pointer;
+    text-decoration: underline;
+    user-select: none;
+  }
+
+  #toggle-signup:hover {
+    color: #357ae8;
+  }
+
+  #message {
+    margin-top: 20px;
+    min-height: 24px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #e74c3c; /* default error red */
+    transition: color 0.3s ease;
+  }
+
+  #user-info {
+    margin-top: 25px;
+    font-weight: 600;
+    font-size: 16px;
+    color: #222;
+  }
+
+  #user-info img {
+    margin-top: 15px;
+    border-radius: 50%;
+    width: 90px;
+    height: 90px;
+    object-fit: cover;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  }
+
+  /* Responsive */
+  @media (max-width: 400px) {
+    #auth-container {
+      width: 90vw;
+      padding: 30px 20px 40px;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<div id="auth-container">
+  <h2 id="form-title">Sign In</h2>
+
+  <input type="email" id="email" placeholder="Email" autocomplete="username" />
+  <input type="password" id="password" placeholder="Password" autocomplete="current-password" />
+
+  <button id="auth-btn">Sign In</button>
+  <button id="google-btn">Sign In with Google</button>
+  <button id="reset-password-btn">Reset Password</button>
+
+  <p id="toggle-signup">Don't have an account? Sign Up</p>
+
+  <div id="message"></div>
+  <div id="user-info"></div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+  import { 
+    getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, 
+    GoogleAuthProvider, sendPasswordResetEmail, signOut, onAuthStateChanged 
+  } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+
+  // Your Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyAzEgIU5lzKxxhc7Lh0YfCfI_WbT2hePKU",
+    authDomain: "test-26e52.firebaseapp.com",
+    projectId: "test-26e52",
+    storageBucket: "test-26e52.firebasestorage.app",
+    messagingSenderId: "182043653435",
+    appId: "1:182043653435:web:fe99105ff92315b30af31e",
+    measurementId: "G-7H9EKW7WS3"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
+  // DOM elements
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const authBtn = document.getElementById('auth-btn');
+  const googleBtn = document.getElementById('google-btn');
+  const resetBtn = document.getElementById('reset-password-btn');
+  const toggleSignup = document.getElementById('toggle-signup');
+  const messageDiv = document.getElementById('message');
+  const userInfoDiv = document.getElementById('user-info');
+  const formTitle = document.getElementById('form-title');
+
+  let isSignUp = false;
+
+  // Toggle between Sign In and Sign Up
+  toggleSignup.addEventListener('click', () => {
+    isSignUp = !isSignUp;
+    formTitle.textContent = isSignUp ? 'Sign Up' : 'Sign In';
+    authBtn.textContent = isSignUp ? 'Sign Up' : 'Sign In';
+    toggleSignup.textContent = isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up";
+    resetBtn.style.display = isSignUp ? 'none' : 'block';
+    passwordInput.placeholder = isSignUp ? 'Create Password' : 'Password';
+    messageDiv.textContent = '';
+  });
+
+  // Show messages in a nice way
+  function showMessage(text, isError = true) {
+    messageDiv.style.color = isError ? '#e74c3c' : '#27ae60';
+    messageDiv.textContent = text;
+  }
+
+  // Clear form inputs
+  function clearInputs() {
+    emailInput.value = '';
+    passwordInput.value = '';
+  }
+
+  // Display user info and hide form inputs/buttons
+  function displayUser(user) {
+    const name = user.displayName || user.email;
+    userInfoDiv.innerHTML = `
+      <p>Welcome, <strong>${name}</strong></p>
+      ${user.photoURL ? `<img src="${user.photoURL}" alt="User photo" />` : ''}
+      <button id="sign-out-btn" style="
+        margin-top: 25px;
+        background: #555;
+        color: white;
+        border-radius: 8px;
+        padding: 12px 0;
+        width: 100%;
+        font-weight: 700;
+        font-size: 16px;
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        transition: background-color 0.3s ease;
+      ">Sign Out</button>
+    `;
+
+    // Hide form and buttons
+    authBtn.style.display = 'none';
+    googleBtn.style.display = 'none';
+    emailInput.style.display = 'none';
+    passwordInput.style.display = 'none';
+    resetBtn.style.display = 'none';
+    toggleSignup.style.display = 'none';
+    formTitle.style.display = 'none';
+    messageDiv.textContent = '';
+
+    // Sign out handler
+    document.getElementById('sign-out-btn').addEventListener('click', async () => {
+      await signOut(auth);
+      userInfoDiv.innerHTML = '';
+      // Show form again
+      authBtn.style.display = 'block';
+      googleBtn.style.display = 'block';
+      emailInput.style.display = 'block';
+      passwordInput.style.display = 'block';
+      resetBtn.style.display = 'block';
+      toggleSignup.style.display = 'block';
+      formTitle.style.display = 'block';
+      clearInputs();
+      isSignUp = false;
+      formTitle.textContent = 'Sign In';
+      authBtn.textContent = 'Sign In';
+      toggleSignup.textContent = "Don't have an account? Sign Up";
+    });
+  }
+
+  // Handle Sign In / Sign Up button click
+  authBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    showMessage('');
+
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+
+    if (!email || !password) {
+      showMessage('Please enter your email and password.');
+      return;
+    }
+
+    try {
+      if (isSignUp) {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        displayUser(userCredential.user);
+        showMessage('Sign up successful!', false);
+      } else {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        displayUser(userCredential.user);
+        showMessage('Signed in successfully!', false);
+      }
+    } catch (error) {
+      showMessage(error.message);
+    }
+  });
+
+  // Handle Google Sign-In button click
+  googleBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    showMessage('');
+    try {
+      const result = await signInWithPopup(auth, provider);
+      displayUser(result.user);
+      showMessage('Signed in with Google!', false);
+    } catch (error) {
+      showMessage(error.message);
+    }
+  });
+
+  // Handle password reset
+  resetBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    showMessage('');
+    const email = emailInput.value.trim();
+    if (!email) {
+      showMessage('Please enter your email to reset your password.');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      showMessage('Password reset email sent! Check your inbox.', false);
+    } catch (error) {
+      showMessage(error.message);
+    }
+  });
+
+  // Detect auth state changes
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      displayUser(user);
+    } else {
+      userInfoDiv.innerHTML = '';
+      authBtn.style.display = 'block';
+      googleBtn.style.display = 'block';
+      emailInput.style.display = 'block';
+      passwordInput.style.display = 'block';
+      resetBtn.style.display = 'block';
+      toggleSignup.style.display = 'block';
+      formTitle.style.display = 'block';
+      clearInputs();
+      isSignUp = false;
+      formTitle.textContent = 'Sign In';
+      authBtn.textContent = 'Sign In';
+      toggleSignup.textContent = "Don't have an account? Sign Up";
+      showMessage('');
+    }
+  });
+</script>
+
+</body>
+</html>
